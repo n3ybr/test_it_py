@@ -16,3 +16,23 @@ async def test_get_category():
     assert data[1]["name"] == "Аксессуары"
     assert data[2]["name"] == "Чехлы"
     assert data[3]["name"] == "Зарядки"
+
+@pytest.mark.asyncio
+async def test_add_category():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.post("categories/?name=Офисные&parent_id=3") 
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data['id'] != None
+
+@pytest.mark.asyncio
+async def test_add_category():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
+        response = await ac.post("categories/?name=Книги") 
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert data['id'] != None
