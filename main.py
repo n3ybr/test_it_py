@@ -7,8 +7,8 @@ DATABASE_URL = "postgresql://postgres:Qazwsx12@localhost:5432/test"
 engine = create_engine(DATABASE_URL)
 
 class Categories(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str = Field(index=True)
+    id: int = Field(primary_key=True)
+    name: str
     parent_id: Optional[int] = Field(default=None)
     path: str
 
