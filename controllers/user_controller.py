@@ -4,7 +4,6 @@ from typing import Annotated
 import jwt
 from fastapi import Depends, APIRouter, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
@@ -76,6 +75,22 @@ def add_user(username: str, password: str, session: SessionDep):
     session.commit()
     return
 
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    if not token:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    try:
+        token_data = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+
+    if token_data:
+        return True
+    
+    else:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
 @router.post("/token")
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()], session: SessionDep
@@ -90,7 +105,6 @@ async def login_for_access_token(
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     
-    # Передаем только username вместо всего объекта user
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
@@ -99,7 +113,63 @@ async def login_for_access_token(
 
 @router.post("/users/add/")
 async def add_users(
-    form_data: Users, session: SessionDep
+    form_data: Users, session: SessionDep, current_user: Users = Depends(get_current_user)
 ):
     add_user(form_data.username, form_data.password, session)
-    return {"status": "User added"}
+
+    return {"status": "Пользователь добавлен", "username": form_data.username}
+
+
+@router.get("/users/{user_id}")
+async def read_users(user_id: int, session: SessionDep, current_user: Users = Depends(get_current_user)):
+    user = session.get(Users, user_id)
+
+    if user is None:
+
+        raise HTTPException(status_code=401, detail="Пользователь не найден")
+            
+    return {"username": user.username}
+
+@router.delete("/users/{user_id}")
+async def delete_user(user_id: int, session: SessionDep, current_user: Users = Depends(get_current_user)):
+    user = session.get(Users, user_id)
+    
+    if not user:
+
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+       
+    session.delete(user)
+
+    session.commit()
+    return {"status": f"Пользователь удален", "user_id": user_id}
+
+@router.put("/users/{user_id}")
+async def update_user(user_id: int, new_password: str, session: SessionDep, current_user: Users = Depends(get_current_user)):
+    user = session.get(Users, user_id)
+    
+    if not user:
+
+        raise HTTPException(status_code=404, detail="Пользователь не найден")
+       
+    user.password = get_password_hash(new_password)
+
+    session.add(user)
+
+    session.commit()
+
+    return {"status": f"Пароль пользователя обновлен", "user_id": user_id}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
