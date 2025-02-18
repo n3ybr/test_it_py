@@ -114,7 +114,10 @@ async def login_for_access_token(
 @router.post("/users/add/")
 async def add_users(
     form_data: Users, session: SessionDep, current_user: Users = Depends(get_current_user)
-):
+):  
+    if not form_data.username or not form_data.password:
+        raise HTTPException(status_code=400, detail="Необходимо указать имя пользователя и пароль")
+
     add_user(form_data.username, form_data.password, session)
 
     return {"status": "Пользователь добавлен", "username": form_data.username}
@@ -135,7 +138,6 @@ async def delete_user(user_id: int, session: SessionDep, current_user: Users = D
     user = session.get(Users, user_id)
     
     if not user:
-
         raise HTTPException(status_code=404, detail="Пользователь не найден")
        
     session.delete(user)
@@ -148,7 +150,6 @@ async def update_user(user_id: int, new_password: str, session: SessionDep, curr
     user = session.get(Users, user_id)
     
     if not user:
-
         raise HTTPException(status_code=404, detail="Пользователь не найден")
        
     user.password = get_password_hash(new_password)
